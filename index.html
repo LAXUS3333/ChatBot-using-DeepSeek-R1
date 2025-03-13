@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>ChatBot</title>
+	<link rel="icon" type="image/png" sizes="64x64" href="Logos/Logo.png">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" />
+	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+	<style>
+		body {
+			background-color: rgb(19, 19, 19);
+			color: antiquewhite;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+		}
+
+		.navbar {
+			background-color: #0a0a0ae1;
+			padding: 10px 20px;
+		}
+
+		.chat-container {
+			flex: 1;
+			overflow-y: auto;
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			margin-bottom: 80px; /* Ensures space for input field */
+		}
+
+		.chat-bubble {
+			max-width: 70%;
+			padding: 10px 15px;
+			border-radius: 15px;
+			margin-bottom: 10px;
+			word-wrap: break-word;
+		}
+
+		.user-message {
+			background-color: #494949;
+			color: white;
+			align-self: flex-end;
+		}
+
+		.bot-message {
+			background-color: #333;
+			color: antiquewhite;
+			align-self: flex-start;
+		}
+
+		.input-container {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			position: fixed;
+			bottom: 0;
+			width: 100%;
+			background-color: rgb(19, 19, 19);
+			padding: 10px 0;
+			box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+		}
+
+		.input-area {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			background-color: #1e1e1e;
+			padding: 10px;
+			border-radius: 10px;
+			width: 70%;
+			border: 2px solid #444;
+		}
+
+		.input-area input {
+			width: 80%;
+			padding: 12px;
+			border-radius: 5px;
+			border: 1px solid #666;
+			background-color: #222;
+			color: antiquewhite;
+			font-size: 16px;
+		}
+
+		.input-area button {
+			margin-left: 10px;
+			padding: 12px 20px;
+			border-radius: 5px;
+			background-color: #121212;
+			border: 1px solid #333;
+			color: #fff;
+			font-size: 16px;
+			cursor: pointer;
+		}
+
+		.input-area button:hover {
+			background-color: #292929;
+		}
+
+		/* Login & Signup Buttons */
+		.btn-outline-light {
+			border: 2px solid white;
+			color: white;
+			padding: 5px 15px;
+		}
+		
+		.btn-outline-light:hover {
+			background-color: rgb(75, 75, 75);
+			color: black;
+		}
+	</style>
+</head>
+<body>
+	<nav class="navbar">
+		<a class="navbar-brand" href="#">
+			<img src="Logos/Logo1.png" alt="Omega AI Logo" height="60">
+		</a>
+		<div class="ml-auto">
+			<a href="#" class="btn btn-outline-light mx-2">Login</a>
+			<a href="#" class="btn btn-outline-light">Signup</a>
+		</div>
+	</nav>
+
+	<!-- Chat Area -->
+	<div class="chat-container" id="chatContainer"></div>
+
+	<!-- Input Field -->
+	<div class="input-container">
+		<div class="input-area">
+			<input type="text" id="userInput" placeholder="Enter your question" onkeypress="handleKeyPress(event)">
+			<button onclick="sendMessage()">Send</button>
+		</div>
+	</div>
+
+	<script>
+		async function sendMessage() {
+			const input = document.getElementById('userInput').value.trim();
+			const chatContainer = document.getElementById('chatContainer');
+
+			if (!input) return;
+
+			// Append user message
+			const userMessage = document.createElement('div');
+			userMessage.className = 'chat-bubble user-message';
+			userMessage.textContent = input;
+			chatContainer.appendChild(userMessage);
+			chatContainer.scrollTop = chatContainer.scrollHeight;
+
+			// Show typing indicator
+			const botMessage = document.createElement('div');
+			botMessage.className = 'chat-bubble bot-message';
+			botMessage.textContent = 'Typing...';
+			chatContainer.appendChild(botMessage);
+			chatContainer.scrollTop = chatContainer.scrollHeight;
+
+			try {
+				const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+					method: 'POST',
+					headers: {
+						Authorization: 'Bearer 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',
+						'HTTP-Referer': 'https://www.sitename.com',
+						'X-Title': 'SiteName',
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						model: 'deepseek/deepseek-r1:free',
+						messages: [{ role: 'user', content: input }],
+					}),
+				});
+
+				const data = await response.json();
+				const fullText = data.choices?.[0]?.message?.content || 'No response received.';
+
+				// Remove "Typing..." message
+				chatContainer.removeChild(botMessage);
+
+				// Append AI response with typing effect
+				const aiResponse = document.createElement('div');
+				aiResponse.className = 'chat-bubble bot-message';
+				chatContainer.appendChild(aiResponse);
+				chatContainer.scrollTop = chatContainer.scrollHeight;
+
+				typeResponse(aiResponse, fullText);
+			} catch (error) {
+				chatContainer.removeChild(botMessage);
+				const errorMessage = document.createElement('div');
+				errorMessage.className = 'chat-bubble bot-message';
+				errorMessage.textContent = 'Error: ' + error.message;
+				chatContainer.appendChild(errorMessage);
+			}
+
+			document.getElementById('userInput').value = '';
+		}
+
+		function typeResponse(element, text, index = 0) {
+			if (index < text.length) {
+				element.innerHTML += text.charAt(index);
+				setTimeout(() => typeResponse(element, text, index + 1), 30); // Typing speed
+			} else {
+				element.innerHTML = marked.parse(text);
+			}
+		}
+
+		function handleKeyPress(event) {
+			if (event.key === 'Enter') {
+				sendMessage();
+			}
+		}
+	</script>
+</body>
+</html>
